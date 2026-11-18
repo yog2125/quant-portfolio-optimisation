@@ -83,7 +83,7 @@ st.markdown("""
 <div class="terminal-banner">
     <h1 style="margin:0; font-size: 2.1rem;">⚡ QUANTOPTIMA // STOCHASTIC ASSET ALLOCATION ENGINE</h1>
     <p style="margin:6px 0 0 0; color:#38bdf8; font-family:monospace; font-size:0.95rem;">
-        Non-Gradient Metaheuristic Search (Simulated Annealing & Evolutionary Strategy) • Tail-Risk CVaR • Live NSE Execution Engine
+        Non-Gradient Metaheuristic Search (Simulated Annealing & Evolutionary Strategy) • Tail-Risk CVaR • Live US Execution Engine
     </p>
 </div>
 """, unsafe_allow_html=True)
@@ -91,28 +91,26 @@ st.markdown("""
 # ==========================================
 # 2. SIDEBAR: HYPERPARAMETERS & CONSTRAINTS
 # ==========================================
-st.sidebar.markdown("### 🎛️ 1. Asset Universe (NSE)")
+st.sidebar.markdown("### 🎛️ 1. Asset Universe (US Equities)")
 
-NIFTY_UNIVERSE = [
-    "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
-    "BHARTIARTL.NS", "SBIN.NS", "LT.NS", "ITC.NS", "TATAMOTORS.NS",
-    "SUNPHARMA.NS", "NTPC.NS", "M&M.NS", "BAJFINANCE.NS", "HCLTECH.NS",
-    "MARUTI.NS", "ADANIPORTS.NS", "TITAN.NS", "COALINDIA.NS", "HINDALCO.NS",
-    "POWERGRID.NS", "TATASTEEL.NS", "ASIANPAINT.NS", "AXISBANK.NS", "WIPRO.NS"
+US_UNIVERSE = [
+    "AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "TSLA", "BRK-B", "JPM", "V", 
+    "JNJ", "WMT", "PG", "MA", "XOM", "UNH", "HD", "CVX", "LLY", "ABBV", 
+    "BAC", "KO", "PFE", "COST", "CSCO"
 ]
 
-default_picks = ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "SUNPHARMA.NS", "LT.NS", "NTPC.NS", "M&M.NS"]
-selected_tickers = st.sidebar.multiselect("Select Portfolio Constituents", NIFTY_UNIVERSE, default=default_picks)
+default_picks = ["AAPL", "MSFT", "NVDA", "JPM", "XOM", "COST", "LLY", "META"]
+selected_tickers = st.sidebar.multiselect("Select Portfolio Constituents", US_UNIVERSE, default=default_picks)
 
 if len(selected_tickers) < 3:
-    st.warning("⚠️ Select at least 3 NSE assets in the sidebar to initialize multi-dimensional covariance & non-gradient search.")
+    st.warning("⚠️ Select at least 3 US assets in the sidebar to initialize multi-dimensional covariance & non-gradient search.")
     st.stop()
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 💼 2. Real-World Mandate")
-capital_inr = st.sidebar.number_input("Deployable Capital (₹ INR)", min_value=10000, max_value=100000000, value=500000, step=50000)
+capital_usd = st.sidebar.number_input("Deployable Capital ($ USD)", min_value=10000, max_value=10000000, value=100000, step=10000)
 lookback_years = st.sidebar.slider("Historical Lookback Window (Years)", 1, 5, 3)
-risk_free_rate = st.sidebar.number_input("India 10Y G-Sec Risk-Free Rate (%)", value=6.80, step=0.10) / 100.0
+risk_free_rate = st.sidebar.number_input("US 10-Year Treasury Yield (%)", value=4.40, step=0.10) / 100.0
 
 min_floor = round(1.0 / len(selected_tickers) + 0.05, 2)
 max_weight_cap = st.sidebar.slider(
@@ -155,14 +153,14 @@ def fetch_market_data(tickers, years):
     prices.dropna(inplace=True)
     return prices
 
-with st.spinner("🔄 Synchronizing NSE Historical OHLCV & Computing Covariance Tensors..."):
+with st.spinner("🔄 Synchronizing US Market Historical OHLCV & Computing Covariance Tensors..."):
     prices = fetch_market_data(selected_tickers, lookback_years)
 
 if prices.empty or len(prices.columns) < 3:
     st.error("⚠️ Failed to retrieve sufficient overlapping history for the selected tickers.")
     st.stop()
 
-clean_names = [col.replace(".NS", "") for col in prices.columns]
+clean_names = [str(col) for col in prices.columns]
 prices.columns = clean_names
 num_assets = len(clean_names)
 
@@ -329,8 +327,8 @@ m1.metric("Expected Annual Return", f"{opt_ret*100:.2f}%", f"{(opt_ret - eq_ret)
 m2.metric("Annualized Volatility", f"{opt_vol*100:.2f}%", f"{(opt_vol - eq_vol)*100:+.2f}% vs Equal-Wt", delta_color="inverse")
 m3.metric("Sharpe Ratio", f"{opt_sharpe:.2f}", f"{opt_sharpe - eq_sharpe:+.2f} Alpha")
 m4.metric("Sortino Ratio", f"{opt_sortino:.2f}", f"{opt_sortino - eq_sortino:+.2f} Downside")
-m5.metric("95% Daily VaR (INR)", f"₹{opt_var95 * capital_inr:,.0f}", f"-{opt_var95*100:.2f}% Cutoff", delta_color="off")
-m6.metric("95% Tail CVaR (INR)", f"₹{opt_cvar95 * capital_inr:,.0f}", f"Winner: {winning_algo[:12]}", delta_color="off")
+m5.metric("95% Daily VaR (USD)", f"${opt_var95 * capital_usd:,.0f}", f"-{opt_var95*100:.2f}% Cutoff", delta_color="off")
+m6.metric("95% Tail CVaR (USD)", f"${opt_cvar95 * capital_usd:,.0f}", f"Winner: {winning_algo[:12]}", delta_color="off")
 
 # ==========================================
 # 6. MULTI-TAB QUANTITATIVE WORKSPACE
@@ -338,7 +336,7 @@ m6.metric("95% Tail CVaR (INR)", f"₹{opt_cvar95 * capital_inr:,.0f}", f"Winner
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🧬 1. Non-Gradient Convergence Lab",
     "🎯 2. Efficient Frontier & 3D Surface",
-    "💼 3. Live NSE Order Book & Discrete Lots",
+    "💼 3. Live US Equity Order Book",
     "📈 4. Out-of-Sample Backtest & Drawdowns",
     "🔥 5. Correlation & Black-Swan Stress Test"
 ])
@@ -361,7 +359,6 @@ with tab1:
             y=sa_hist, mode='lines', name='Simulated Annealing Trajectory',
             line=dict(color='#00f2fe', width=2.5)
         ))
-        # Resample Evolutionary Strategy to match x-axis scale visually or plot across generations
         evo_x = np.linspace(0, len(sa_hist) - 1, len(evo_hist))
         fig_conv.add_trace(go.Scatter(
             x=evo_x, y=evo_hist, mode='lines+markers', name='Evolutionary Strategy (μ+λ) Elites',
@@ -378,7 +375,6 @@ with tab1:
         st.plotly_chart(fig_conv, use_container_width=True)
         
     with col_conv2:
-        # Compare all 4 strategies side-by-side
         algos = {
             "Simulated Annealing": best_sa_w,
             "Evolutionary Strategy (μ+λ)": best_evo_w,
@@ -400,7 +396,6 @@ with tab1:
         st.markdown("#### 🏆 Multi-Solver Benchmark Table")
         st.dataframe(df_comp, use_container_width=True, hide_index=True)
         
-        # Thermal Decay Plot
         fig_temp = go.Figure()
         fig_temp.add_trace(go.Scatter(
             y=sa_temps, mode='lines', fill='tozeroy',
@@ -433,16 +428,14 @@ with tab2:
             ),
             name="Feasible Dirichlet Cloud"
         ))
-        # Plot Individual Stocks
         indiv_vols = np.sqrt(np.diag(cov_matrix)) * 100
         indiv_rets = mean_returns * 100
         fig_ef.add_trace(go.Scatter(
             x=indiv_vols, y=indiv_rets, mode='markers+text',
             text=clean_names, textposition="top center",
             marker=dict(color='#e2e8f0', size=10, symbol='diamond', line=dict(width=1, color='#000')),
-            name="Individual NSE Stocks"
+            name="Individual US Stocks"
         ))
-        # Plot Optimal & Equal Weight
         fig_ef.add_trace(go.Scatter(
             x=[opt_vol * 100], y=[opt_ret * 100], mode='markers',
             marker=dict(color='#00ff87', size=18, symbol='star', line=dict(width=2, color='#000')),
@@ -490,67 +483,65 @@ with tab2:
         st.plotly_chart(fig_3d, use_container_width=True)
 
 # ------------------------------------------
-# TAB 3: LIVE NSE ORDER BOOK & DISCRETE LOTS
+# TAB 3: LIVE US EQUITY ORDER BOOK
 # ------------------------------------------
 with tab3:
-    st.subheader(f"Real-World NSE Execution Sheet (Capital Mandate: ₹{capital_inr:,.0f})")
-    st.write("Translating continuous mathematical weights into **exact integer share quantities** based on live NSE closing prices, plus **Marginal Contribution to Risk (MCR)**.")
+    st.subheader(f"Real-World US Equity Execution Sheet (Capital Mandate: ${capital_usd:,.0f})")
+    st.write("Translating continuous mathematical weights into **exact integer share quantities** based on live US closing prices, plus **Marginal Contribution to Risk (MCR)**.")
     
     latest_prices = prices.iloc[-1].values
-    target_inr = primary_w * capital_inr
-    exact_shares = np.floor(target_inr / latest_prices).astype(int)
+    target_usd = primary_w * capital_usd
+    exact_shares = np.floor(target_usd / latest_prices).astype(int)
     actual_invested = exact_shares * latest_prices
-    unallocated_cash = capital_inr - np.sum(actual_invested)
+    unallocated_cash = capital_usd - np.sum(actual_invested)
     
-    # greedy top-up with remaining cash for highest priority stocks
-    residual_order = np.argsort(-(target_inr - actual_invested))
+    residual_order = np.argsort(-(target_usd - actual_invested))
     for idx in residual_order:
-        if unallocated_cash >= latest_prices[idx] and (actual_invested[idx] + latest_prices[idx]) / capital_inr <= max_weight_cap:
+        if unallocated_cash >= latest_prices[idx] and (actual_invested[idx] + latest_prices[idx]) / capital_usd <= max_weight_cap:
             add_qty = int(unallocated_cash // latest_prices[idx])
             if add_qty > 0:
                 exact_shares[idx] += add_qty
                 actual_invested[idx] += add_qty * latest_prices[idx]
-                unallocated_cash = capital_inr - np.sum(actual_invested)
+                unallocated_cash = capital_usd - np.sum(actual_invested)
 
-    # Marginal Contribution to Risk (Risk Parity Decomposition)
     marginal_risk = (cov_matrix @ primary_w) / (opt_vol + 1e-9)
     component_risk = primary_w * marginal_risk
     risk_pct = (component_risk / np.sum(component_risk)) * 100
 
     order_df = pd.DataFrame({
-        "NSE Symbol": clean_names,
-        "Live LTP (₹)": np.round(latest_prices, 2),
+        "Ticker Symbol": clean_names,
+        "Live LTP ($)": np.round(latest_prices, 2),
         "Model Weight (%)": np.round(primary_w * 100, 2),
         "Risk Contribution (%)": np.round(risk_pct, 2),
         "Discrete Shares to BUY": exact_shares,
-        "Actual Capital Deployed (₹)": np.round(actual_invested, 2),
-        "Realized Weight (%)": np.round((actual_invested / capital_inr) * 100, 2)
+        "Actual Capital Deployed ($)": np.round(actual_invested, 2),
+        "Realized Weight (%)": np.round((actual_invested / capital_usd) * 100, 2)
     }).sort_values(by="Model Weight (%)", ascending=False)
 
     ob_c1, ob_c2 = st.columns([3, 2])
     with ob_c1:
         st.dataframe(order_df, use_container_width=True, hide_index=True)
         st.info(
-            f"💰 **Total Deployed Capital:** `₹{np.sum(actual_invested):,.2f}` ({np.sum(actual_invested)/capital_inr*100:.2f}%) | "
-            f"🏦 **Residual Cash Balance:** `₹{unallocated_cash:,.2f}` | "
+            f"💰 **Total Deployed Capital:** `${np.sum(actual_invested):,.2f}` ({np.sum(actual_invested)/capital_usd*100:.2f}%) | "
+            f"🏦 **Residual Cash Balance:** `${unallocated_cash:,.2f}` | "
             f"📦 **Active Positions:** `{np.sum(exact_shares > 0)} / {num_assets} Stocks`"
         )
         csv_bytes = order_df.to_csv(index=False).encode('utf-8')
         st.download_button(
-            "📥 Export Broker Execution CSV (Zerodha / Institutional Basket)",
+            "📥 Export Broker Execution CSV (Interactive Brokers / Institutional Basket)",
             data=csv_bytes,
-            file_name="NSE_Optimal_Order_Book.csv",
+            file_name="US_Optimal_Order_Book.csv",
             mime="text/csv"
         )
         
     with ob_c2:
         fig_bar = go.Figure()
         fig_bar.add_trace(go.Bar(
-            x=order_df["NSE Symbol"], y=order_df["Model Weight (%)"],
+            x=order_df["Ticker Symbol"], y=order_df["Model Weight (%)"],
             name="Capital Weight (%)", marker_color='#00f2fe'
         ))
         fig_bar.add_trace(go.Bar(
-            x=order_df["NSE Symbol"], y=order_df["Risk Contribution (%)"],
+            x=order_df["Ticker Symbol"], y=order_df["Risk Contribution (%)"],
             name="Euler Risk Contribution (%)", marker_color='#f43f5e'
         ))
         fig_bar.update_layout(
@@ -572,25 +563,24 @@ with tab4:
     sa_daily_ret = returns @ best_sa_w
     evo_daily_ret = returns @ best_evo_w
     
-    wealth_opt = capital_inr * (1 + opt_daily_ret).cumprod()
-    wealth_eq = capital_inr * (1 + eq_daily_ret).cumprod()
-    wealth_sa = capital_inr * (1 + sa_daily_ret).cumprod()
-    wealth_evo = capital_inr * (1 + evo_daily_ret).cumprod()
+    wealth_opt = capital_usd * (1 + opt_daily_ret).cumprod()
+    wealth_eq = capital_usd * (1 + eq_daily_ret).cumprod()
+    wealth_sa = capital_usd * (1 + sa_daily_ret).cumprod()
+    wealth_evo = capital_usd * (1 + evo_daily_ret).cumprod()
     
     fig_bt = go.Figure()
     fig_bt.add_trace(go.Scatter(x=returns.index, y=wealth_evo, name="Evolutionary Strategy (μ+λ)", line=dict(color='#00ff87', width=2.5)))
     fig_bt.add_trace(go.Scatter(x=returns.index, y=wealth_sa, name="Simulated Annealing", line=dict(color='#00f2fe', width=2, dash='dot')))
     fig_bt.add_trace(go.Scatter(x=returns.index, y=wealth_eq, name="Equal-Weight (1/N) Benchmark", line=dict(color='#94a3b8', width=2)))
     fig_bt.update_layout(
-        title=f"Cumulative Portfolio Growth of ₹{capital_inr:,.0f} ({lookback_years}-Year Backtest)",
-        xaxis_title="Date", yaxis_title="Portfolio Value (₹ INR)",
+        title=f"Cumulative Portfolio Growth of ${capital_usd:,.0f} ({lookback_years}-Year Backtest)",
+        xaxis_title="Date", yaxis_title="Portfolio Value ($ USD)",
         template="plotly_dark", height=420,
         paper_bgcolor='rgba(15,23,42,0.7)', plot_bgcolor='rgba(15,23,42,0.4)',
         legend=dict(orientation="h", y=1.1)
     )
     st.plotly_chart(fig_bt, use_container_width=True)
     
-    # Underwater Drawdown Curve
     dd_opt = (wealth_opt / wealth_opt.cummax() - 1) * 100
     dd_eq = (wealth_eq / wealth_eq.cummax() - 1) * 100
     
@@ -632,20 +622,18 @@ with tab5:
         shock_pct = st.slider(f"Simulate Single-Day Crash in {shock_Asset} (%)", -40, -5, -15, step=5)
         
         asset_idx = clean_names.index(shock_Asset)
-        # Beta spillover using correlation with shocked asset
         asset_vols = np.sqrt(np.diag(cov_matrix))
         corr_vec = corr_matrix.iloc[:, asset_idx].values
         spillover_shocks = (shock_pct / 100.0) * corr_vec * (asset_vols / asset_vols[asset_idx])
         
         opt_Portfolio_Impact = np.sum(primary_w * spillover_shocks) * 100
         eq_Portfolio_Impact = np.sum(eq_w * spillover_shocks) * 100
-        inr_loss = (opt_Portfolio_Impact / 100.0) * capital_inr
+        usd_loss = (opt_Portfolio_Impact / 100.0) * capital_usd
         
         sc1, sc2 = st.columns(2)
-        sc1.metric("Contagion Portfolio Impact", f"{opt_Portfolio_Impact:.2f}%", f"₹{inr_loss:,.0f} PnL Shock", delta_color="inverse")
+        sc1.metric("Contagion Portfolio Impact", f"{opt_Portfolio_Impact:.2f}%", f"${usd_loss:,.0f} PnL Shock", delta_color="inverse")
         sc2.metric("Equal-Weight Contagion Impact", f"{eq_Portfolio_Impact:.2f}%", f"{opt_Portfolio_Impact - eq_Portfolio_Impact:+.2f}% Relative Shield")
         
-        # Daily Return Distribution with VaR / CVaR Cutoffs
         port_daily_pct = (returns_matrix @ primary_w) * 100
         fig_dist = go.Figure()
         fig_dist.add_trace(go.Histogram(x=port_daily_pct, nbinsx=60, marker_color='#38bdf8', opacity=0.75, name="Daily Returns"))

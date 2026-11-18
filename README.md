@@ -1,21 +1,17 @@
-# Financial Portfolio Optimisation & Asset Allocation
+# Quantitative Portfolio Optimization & Asset Allocation Engine
 
-**Student:** Yog Dhiraj Chopada (PRN: 20240802178)  
-**Course:** B.Tech Computer Science Engineering  
-**Project Focus:** Quantitative Finance & Non-Gradient Optimization (SLSQP / Monte Carlo Simulation)
+An automated Python data pipeline and Streamlit terminal that calculates the Markowitz Efficient Frontier and extracts the Maximum Sharpe Ratio weights for any given basket of equities.
 
-## Overview
-This capstone project implements an automated portfolio optimization agent. By leveraging historical asset data via the Yahoo Finance API, the application maps the Markowitz Efficient Frontier, calculates annualized returns and covariance matrices, and uses Sequential Least Squares Programming (SLSQP) to find the optimal asset allocation weights maximizing the Sharpe Ratio.
+## Core Architecture
+By leveraging live historical asset data via the Yahoo Finance API, this application maps the Efficient Frontier, calculates annualized returns and covariance matrices, and deploys Non-Gradient Optimization (Simulated Annealing & Evolutionary Strategy) alongside SLSQP to find the optimal asset allocation.
 
-## Tech Stack
-* **Python** (Core Logic)
-* **Streamlit** (Interactive UI & Dashboard)
-* **SciPy** (Non-Gradient Optimization - SLSQP)
-* **Pandas & NumPy** (Vectorized Financial Calculations)
-* **Plotly** (Interactive Visualizations & Efficient Frontier Plots)
+* **Data Ingestion:** Vectorized financial data extraction via `yfinance` and `pandas`.
+* **Matrix Computation:** Multi-dimensional covariance tensors and expected return modeling via `NumPy`.
+* **Optimization Engine:** Non-linear optimization utilizing `SciPy` (SLSQP & Stochastic Metaheuristics).
+* **Visualization:** Renders dynamic 3D topology and Efficient Frontier charts via `Plotly` and `Streamlit`.
 
 ## How to Run Locally
-1. Clone the repository and navigate to the `capstone` folder.
+1. Clone the repository.
 2. Install dependencies:
    ```bash
    pip install -r requirements.txt
